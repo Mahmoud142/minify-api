@@ -14,6 +14,7 @@ import { UserService } from '../user/user.service';
 
 interface SafeUser {
     _id: Types.ObjectId;
+    name: string;
     email: string;
     role: string;
     profilePicUrl?: string;
@@ -46,7 +47,7 @@ export class AuthService {
     ) {}
 
     async signup(signupDto: SignupDto): Promise<SignupResponse> {
-        const { email, password, phone, profilePicUrl } = signupDto;
+        const { name, email, password, phone, profilePicUrl } = signupDto;
 
         //1- Check if the user already exists
         const existingUser = await this.userService.findByEmail(email);
@@ -62,6 +63,7 @@ export class AuthService {
 
         // 3. Create and save the new user
         const newUser = await this.userService.create({
+            name,
             email,
             password: hashedPassword,
             phone,
@@ -74,6 +76,7 @@ export class AuthService {
             data: {
                 user: {
                     _id: newUser._id,
+                    name: newUser.name,
                     email: newUser.email,
                     role: newUser.role,
                     profilePicUrl: newUser.profilePicUrl,
@@ -114,6 +117,7 @@ export class AuthService {
             data: {
                 user: {
                     _id: user._id,
+                    name: user.name,
                     email: user.email,
                     role: user.role,
                     profilePicUrl: user.profilePicUrl,
