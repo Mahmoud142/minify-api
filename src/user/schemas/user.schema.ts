@@ -47,5 +47,17 @@ export class User {
         default: undefined,
     })
     profilePicUrl?: string; // Optional field for the advanced file upload feature later
+
+    @Prop({
+        type: String,
+        default: undefined,
+    })
+    resetPasswordToken?: string;
+
+    @Prop({
+        type: Date,
+        default: undefined,
+    })
+    resetPasswordExpires?: Date;
 }
 export const UserSchema = SchemaFactory.createForClass(User);
