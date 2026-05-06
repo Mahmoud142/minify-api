@@ -9,6 +9,12 @@ import {
 
 export class UpdateUserDto {
     @IsOptional()
+    @IsString({ message: 'Name must be a string' })
+    @MinLength(2, { message: 'Name must be at least 2 characters long' })
+    @MaxLength(255, { message: 'Name must be at most 255 characters long' })
+    name?: string;
+
+    @IsOptional()
     @IsEmail({}, { message: 'Invalid email format' })
     email?: string;
 

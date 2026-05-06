@@ -8,6 +8,14 @@ export type UserDocument = User & Document;
 export class User {
     @Prop({
         required: true,
+        trim: true,
+        minLength: 2,
+        maxLength: 255,
+    })
+    name!: string;
+
+    @Prop({
+        required: true,
         unique: true,
         lowercase: true,
         trim: true,
