@@ -9,14 +9,15 @@ import {
     Res,
     UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { UrlService } from './url.service';
 import { CreateUrlDto } from './dto/create-url.dto';
 import type { Response, Request as ExpressRequest } from 'express';
 
 interface CustomRequest extends ExpressRequest {
-    user?: { id: string };
+    user?: { userId: string };
 }
 
 @Controller('url')
@@ -24,10 +25,10 @@ export class UrlController {
     constructor(private readonly urlService: UrlService) {}
 
     @Post('shorten')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(OptionalJwtAuthGuard)
     async shortenUrl(
         @Body() createUrlDto: CreateUrlDto,
-        @GetUser('userId') userId: string,
+        @GetUser('userId') userId: string | undefined,
         @Req() req: CustomRequest,
     ) {
         const url = await this.urlService.createShortUrl(createUrlDto, userId);

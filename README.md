@@ -321,9 +321,9 @@ Removes a user from the system.
 
 ## URL Shortener Endpoints
 
-### 8. Shorten a URL (Authenticated)
+### 8. Shorten a URL (Public, Optional Authentication)
 
-Creates a shortened URL. This endpoint requires an `Authorization` header to link the URL to the logged-in user.
+Creates a shortened URL. An `Authorization` header is optional; when provided with a valid token, the URL is linked to the logged-in user.
 
 **POST** `/url/shorten`
 
