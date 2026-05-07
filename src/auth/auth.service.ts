@@ -10,7 +10,6 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { UserDocument } from '../user/schemas/user.schema';
 import { BaseResponse } from '../user/interfaces/user-response.interface';
-import { Types } from 'mongoose';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -18,33 +17,11 @@ import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UserService } from '../user/user.service';
 import { MailService } from '../mail/mail.service';
-
-interface SafeUser {
-    _id: Types.ObjectId;
-    name: string;
-    email: string;
-    role: string;
-    profilePicUrl?: string;
-}
-
-export interface SignupResponse extends BaseResponse {
-    data: {
-        user: SafeUser;
-    };
-}
-
-export interface LoginResponse extends BaseResponse {
-    data: {
-        user: SafeUser;
-        token: string;
-    };
-}
-
-export interface JwtPayload {
-    sub: Types.ObjectId;
-    email: string;
-    role: string;
-}
+import {
+    LoginResponse,
+    SignupResponse,
+} from './interfaces/auth-response.interface';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
