@@ -25,6 +25,21 @@ export class UserService {
         return this.userModel.findOne({ email }).exec();
     }
 
+    async findByResetToken(token: string): Promise<UserDocument | null> {
+        return this.userModel
+            .findOne({
+                resetPasswordToken: token,
+                resetPasswordExpires: { $gt: new Date() },
+            })
+            .exec();
+    }
+
+    async updateRaw(id: string, updateData: any): Promise<UserDocument | null> {
+        return this.userModel
+            .findByIdAndUpdate(id, updateData, { returnDocument: 'after' })
+            .exec();
+    }
+
     async findAll(): Promise<UsersResponse> {
         const users = await this.userModel.find().select('-password').exec();
 
