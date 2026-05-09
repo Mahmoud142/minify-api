@@ -1,9 +1,28 @@
-import { IsNotEmpty, IsUrl, IsOptional, IsDateString } from 'class-validator';
+import {
+    IsNotEmpty,
+    IsUrl,
+    IsOptional,
+    IsDateString,
+    IsString,
+    MinLength,
+    MaxLength,
+    Matches,
+} from 'class-validator';
 
 export class CreateUrlDto {
     @IsNotEmpty()
     @IsUrl()
-    originalUrl: string;
+    originalUrl!: string;
+
+    @IsOptional()
+    @IsString()
+    @MinLength(3)
+    @MaxLength(32)
+    @Matches(/^[A-Za-z0-9_-]+$/, {
+        message:
+            'shortCode can only contain letters, numbers, hyphens, and underscores',
+    })
+    shortCode?: string;
 
     @IsOptional()
     @IsDateString()
