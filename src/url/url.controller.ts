@@ -9,6 +9,7 @@ import {
     Res,
     UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -48,6 +49,12 @@ export class UrlController {
         return this.urlService.getUserUrls(userId);
     }
 
+    @Get('analytics')
+    @UseGuards(JwtAuthGuard)
+    async getAnalytics(@GetUser('userId') userId: string) {
+        return this.urlService.getAnalytics(userId);
+    }
+
     @Get(':id/stats')
     @UseGuards(JwtAuthGuard)
     async getUrlStats(
@@ -66,6 +73,7 @@ export class UrlController {
         return this.urlService.deleteUrl(id, userId);
     }
 
+    @Throttle({ default: { ttl: 60000, limit: 20 } })
     @Get(':shortCode')
     async redirect(
         @Param('shortCode') shortCode: string,
@@ -75,7 +83,9 @@ export class UrlController {
         const reqInfo = {
             ipAddress: req.ip,
             userAgent: req.headers['user-agent'],
-            referrer: req.headers['referer'] || req.headers['referrer'],
+            referrer: (req.headers['referer'] || req.headers['referrer']) as
+                | string
+                | undefined,
         };
 
         const originalUrl = await this.urlService.resolveShortUrl(
