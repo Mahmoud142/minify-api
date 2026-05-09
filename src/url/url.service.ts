@@ -11,8 +11,29 @@ import { Url, UrlDocument } from './schemas/url.schema';
 import { ClickEvent, ClickEventDocument } from './schemas/click-event.schema';
 import { CreateUrlDto } from './dto/create-url.dto';
 import * as crypto from 'crypto';
+import * as geoip from 'geoip-lite';
 
-const RESERVED_SHORT_CODES = new Set(['my-urls']);
+interface ReqInfo {
+    ipAddress?: string;
+    userAgent?: string;
+    referrer?: string;
+}
+
+const RESERVED_SHORT_CODES = new Set([
+    'my-urls',
+    'analytics',
+    'shorten',
+    'stats',
+    'admin',
+    'api',
+    'health',
+    'login',
+    'signup',
+    'auth',
+    'dashboard',
+    'settings',
+    'profile',
+]);
 
 @Injectable()
 export class UrlService {
@@ -53,7 +74,10 @@ export class UrlService {
         }
     }
 
-    async resolveShortUrl(shortCode: string, reqInfo: any): Promise<string> {
+    async resolveShortUrl(
+        shortCode: string,
+        reqInfo: ReqInfo,
+    ): Promise<string> {
         const url = await this.urlModel.findOne({ shortCode, isActive: true });
 
         if (!url) {
@@ -64,15 +88,22 @@ export class UrlService {
             throw new NotFoundException('URL has expired');
         }
 
-        // Increment click count asynchronously
+        // Resolve geolocation from request IP
+        const ip = reqInfo.ipAddress;
+        const cleanIp = ip ? ip.replace(/^::ffff:/, '') : null;
+        const geo = cleanIp ? geoip.lookup(cleanIp) : null;
+
+        // Increment click count
         await this.urlModel
             .updateOne({ _id: url._id }, { $inc: { totalClicks: 1 } })
             .exec();
 
-        // Save click analytics asynchronously
+        // Save click analytics with geolocation data
         const clickEvent = new this.clickEventModel({
             urlId: url._id,
             ...reqInfo,
+            country: geo?.country || 'Unknown',
+            city: geo?.city || 'Unknown',
         });
         clickEvent
             .save()
@@ -111,6 +142,7 @@ export class UrlService {
         const clicks = await this.clickEventModel
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             .find({ urlId: url._id as any })
+            .select('-ipAddress')
             .sort({ timestamp: -1 })
             .limit(50)
             .exec();
@@ -134,6 +166,57 @@ export class UrlService {
                 browsers,
                 countries,
             },
+        };
+    }
+
+    async getAnalytics(userId: string): Promise<{
+        message: string;
+        totalClicks: number;
+        topLocations: { country: string; count: number }[];
+        urls: UrlDocument[];
+    }> {
+        // Get all URLs belonging to the logged-in user, sorted by highest clicks first
+        const urls = await this.urlModel
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            .find({ userId: userId as any })
+            .sort({ totalClicks: -1 })
+            .exec();
+
+        if (!urls.length) {
+            return {
+                message: 'Analytics fetched successfully',
+                totalClicks: 0,
+                topLocations: [],
+                urls: [],
+            };
+        }
+
+        // Calculate total clicks across all links
+        const totalClicks = urls.reduce(
+            (sum, url) => sum + (url.totalClicks || 0),
+            0,
+        );
+
+        // Collect all URL IDs for aggregation
+        const urlIds = urls.map((url) => url._id);
+
+        // Aggregate top 10 locations across all user's links
+        const topLocations = await this.clickEventModel.aggregate<{
+            country: string;
+            count: number;
+        }>([
+            { $match: { urlId: { $in: urlIds } } },
+            { $group: { _id: '$country', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 10 },
+            { $project: { _id: 0, country: '$_id', count: 1 } },
+        ]);
+
+        return {
+            message: 'Analytics fetched successfully',
+            totalClicks,
+            topLocations,
+            urls,
         };
     }
 
