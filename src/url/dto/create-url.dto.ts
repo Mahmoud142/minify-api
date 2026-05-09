@@ -11,7 +11,7 @@ import {
 
 export class CreateUrlDto {
     @IsNotEmpty()
-    @IsUrl()
+    @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
     originalUrl!: string;
 
     @IsOptional()
