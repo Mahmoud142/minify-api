@@ -34,7 +34,10 @@ export class UserService {
             .exec();
     }
 
-    async updateRaw(id: string, updateData: any): Promise<UserDocument | null> {
+    async updateRaw(
+        id: string,
+        updateData: import('mongoose').UpdateQuery<UserDocument>,
+    ): Promise<UserDocument | null> {
         return this.userModel
             .findByIdAndUpdate(id, updateData, { returnDocument: 'after' })
             .exec();
