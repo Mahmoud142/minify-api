@@ -1,10 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Url, UrlDocument } from './schemas/url.schema';
 import { ClickEvent, ClickEventDocument } from './schemas/click-event.schema';
 import { CreateUrlDto } from './dto/create-url.dto';
 import * as crypto from 'crypto';
+
+const RESERVED_SHORT_CODES = new Set(['my-urls']);
 
 @Injectable()
 export class UrlService {
@@ -18,20 +26,14 @@ export class UrlService {
         createUrlDto: CreateUrlDto,
         userId?: string,
     ): Promise<UrlDocument> {
-        const { originalUrl, expiresAt } = createUrlDto;
-
-        // Generate a unique 6-character short code
-        let shortCode = this.generateShortCode();
-        let isUnique = false;
-
-        while (!isUnique) {
-            const existing = await this.urlModel.findOne({ shortCode });
-            if (!existing) {
-                isUnique = true;
-            } else {
-                shortCode = this.generateShortCode();
-            }
-        }
+        const {
+            originalUrl,
+            expiresAt,
+            shortCode: requestedShortCode,
+        } = createUrlDto;
+        const shortCode = requestedShortCode
+            ? await this.validateCustomShortCode(requestedShortCode, userId)
+            : await this.generateUniqueShortCode();
 
         const newUrl = new this.urlModel({
             originalUrl,
@@ -40,7 +42,15 @@ export class UrlService {
             expiresAt,
         });
 
-        return newUrl.save();
+        try {
+            return await newUrl.save();
+        } catch (error) {
+            if (this.isDuplicateKeyError(error)) {
+                throw new ConflictException('This custom URL already exists');
+            }
+
+            throw error;
+        }
     }
 
     async resolveShortUrl(shortCode: string, reqInfo: any): Promise<string> {
@@ -151,5 +161,52 @@ export class UrlService {
 
     private generateShortCode(): string {
         return crypto.randomBytes(4).toString('base64url').substring(0, 6);
+    }
+
+    private async generateUniqueShortCode(): Promise<string> {
+        let shortCode = this.generateShortCode();
+        let isUnique = false;
+
+        while (!isUnique) {
+            const existing = await this.urlModel.findOne({ shortCode });
+            if (!existing) {
+                isUnique = true;
+            } else {
+                shortCode = this.generateShortCode();
+            }
+        }
+
+        return shortCode;
+    }
+
+    private async validateCustomShortCode(
+        shortCode: string,
+        userId?: string,
+    ): Promise<string> {
+        if (!userId) {
+            throw new UnauthorizedException(
+                'You must be logged in to create a custom short code',
+            );
+        }
+
+        if (RESERVED_SHORT_CODES.has(shortCode.toLowerCase())) {
+            throw new BadRequestException('This short code is reserved');
+        }
+
+        const existing = await this.urlModel.findOne({ shortCode });
+        if (existing) {
+            throw new ConflictException('This custom URL already exists');
+        }
+
+        return shortCode;
+    }
+
+    private isDuplicateKeyError(error: unknown): boolean {
+        return (
+            typeof error === 'object' &&
+            error !== null &&
+            'code' in error &&
+            (error as { code?: unknown }).code === 11000
+        );
     }
 }
