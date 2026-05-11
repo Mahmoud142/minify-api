@@ -5,9 +5,25 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import morgan from 'morgan';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
+    const configService = app.get(ConfigService);
+
+    const corsOrigins = (
+        configService.get<string>('CORS_ORIGIN') ??
+        configService.get<string>('FRONTEND_URL') ??
+        'http://localhost:5173'
+    )
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+
+    app.enableCors({
+        origin: corsOrigins,
+        credentials: true,
+    });
 
     // Trust the first reverse proxy (Nginx, Cloudflare, etc.)
     // This ensures req.ip returns the real visitor IP, not the proxy's IP
