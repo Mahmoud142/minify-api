@@ -40,24 +40,46 @@ export class LinktreeService {
     }
 
     async updateUsername(userId: string, updateUsernameDto: UpdateUsernameDto) {
-        const { username } = updateUsernameDto;
-        const lowercaseUsername = username.toLowerCase();
+        const { username, bio, links } = updateUsernameDto;
+        const updateData: Partial<Linktree> = {};
 
-        // Check if username is already taken by someone else
-        const existing = await this.linktreeModel.findOne({
-            username: lowercaseUsername,
-        });
-        if (existing && existing.userId.toString() !== userId) {
-            throw new ConflictException('Username is already taken');
+        if (username) {
+            const lowercaseUsername = username.toLowerCase();
+
+            // Check if username is already taken by someone else
+            const existing = await this.linktreeModel.findOne({
+                username: lowercaseUsername,
+            });
+            if (existing && existing.userId.toString() !== userId) {
+                throw new ConflictException('Username is already taken');
+            }
+            updateData.username = lowercaseUsername;
         }
 
-        const linktree = await this.linktreeModel.findOneAndUpdate(
+        if (bio !== undefined) {
+            updateData.bio = bio;
+        }
+
+        let linktree = await this.linktreeModel.findOneAndUpdate(
             { userId },
-            { username: lowercaseUsername },
+            { $set: updateData },
             { new: true, upsert: true },
         );
 
-        return { message: 'Username updated successfully', linktree };
+        if (links && links.length > 0) {
+            for (const linkUpdate of links) {
+                await this.linktreeModel.updateOne(
+                    { userId, 'links._id': linkUpdate._id },
+                    { $set: { 'links.$.title': linkUpdate.title } },
+                );
+            }
+            // Refresh linktree after updates
+            linktree = (await this.linktreeModel.findOne({
+                userId,
+            }))!;
+        }
+
+        return { message: 'Linktree updated successfully', linktree };
     }
 
     async addLink(userId: string, addLinkDto: AddLinkDto) {
