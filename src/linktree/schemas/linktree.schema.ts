@@ -33,11 +33,19 @@ export class Linktree {
         lowercase: true,
         minLength: 3,
         maxLength: 30,
-        default: function (this: any) {
+        default: function (this: LinktreeDocument) {
             return this.userId ? this.userId.toString() : undefined;
         },
     })
     username: string;
+
+    @Prop({
+        type: String,
+        trim: true,
+        maxLength: 150,
+        default: '',
+    })
+    bio: string;
 
     @Prop({ type: [LinktreeLinkSchema], default: [] })
     links: LinktreeLink[];
